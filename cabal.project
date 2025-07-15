@@ -1,0 +1,50 @@
+packages:
+    deps/aig
+    deps/argo/argo
+    deps/argo/tasty-script-exitcode
+    deps/crucible/crucible
+    deps/crucible/crucible-concurrency
+    deps/crucible/crucible-debug
+    deps/crucible/crucible-jvm
+    deps/crucible/crucible-llvm
+    deps/crucible/crucible-mir
+    deps/crucible/crucible-symio
+    deps/crucible/crucible-syntax
+    deps/crucible/crux
+    deps/crucible/crux-llvm
+    deps/crucible/crux-mir
+    deps/cryptol
+    deps/cryptol/cryptol-remote-api
+    deps/dwarf
+    deps/elf-edit
+    deps/flexdis86
+    deps/flexdis86/binary-symbols
+    deps/jvm-parser
+    deps/language-rust
+    deps/language-sally
+    deps/llvm-pretty
+    deps/llvm-pretty-bc-parser
+    deps/lmdb/lmdb
+    deps/lmdb/lmdb-simple
+    deps/macaw/base
+    deps/macaw/macaw-dump
+    deps/macaw/macaw-loader
+    deps/macaw/macaw-loader-x86
+    deps/macaw/symbolic
+    deps/macaw/x86
+    deps/macaw/x86_symbolic
+    deps/parameterized-utils
+    deps/saw-script
+    deps/saw-script/crucible-mir-comp
+    deps/saw-script/crux-mir-comp
+    deps/saw-script/rme
+    deps/what4/what4
+    deps/what4/what4-transition-system
+
+source-repository-package
+    type: git
+    location: https://github.com/eddywestbrook/hobbits.git
+    tag: 70963e0e3eba2b16f6fc030acb582e8100955e47
+
+-- enable ghc >= 9.8's additional build parallelism
+semaphore: true
