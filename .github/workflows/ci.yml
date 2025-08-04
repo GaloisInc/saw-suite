@@ -110,5 +110,5 @@ jobs:
         if: github.event.pull_request.head.repo.fork == false && github.repository_owner == 'GaloisInc'
         with:
           name: ${{ env.NAME }}
-          path: "${{ env.NAME }}.tar.gz*"
+          path: "deps/mir-json/${{ env.NAME }}.tar.gz*"
           if-no-files-found: error
