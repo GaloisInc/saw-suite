@@ -120,8 +120,17 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
     steps:
-      - name: Retrieve Haskell binaries
+      - name: Download Haskell binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.os }}-bin
+      - name: Download mir-json binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: mir-json-${{ matrix.os }}-${{ runner.arch }}
+      - name: Download solver binaries
         uses: actions/download-artifact@v4
         with:
           repository: GaloisInc/what4-solvers
+          name: ${{ matrix.os }}-${{ runner.arch }}-bin
       - run: find .
