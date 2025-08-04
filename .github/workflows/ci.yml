@@ -115,9 +115,6 @@ jobs:
   package-distribution:
     runs-on: ${{ matrix.os }}
     needs: [build-haskell, build-mir-json]
-    defaults:
-      run:
-        working-directory: ./deps/mir-json
     strategy:
       fail-fast: false
       matrix:
