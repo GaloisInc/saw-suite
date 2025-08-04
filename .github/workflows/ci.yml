@@ -112,3 +112,28 @@ jobs:
           name: ${{ env.NAME }}
           path: "deps/mir-json/${{ env.NAME }}.tar.gz*"
           if-no-files-found: error
+  package-distribution:
+    runs-on: ${{ matrix.os }}
+    needs: [build-haskell, build-mir-json]
+    defaults:
+      run:
+        working-directory: ./deps/mir-json
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+    steps:
+      - name: Retrieve Haskell binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: build-haskell
+      - name: Retrieve mir-json binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: build-mir-json
+      - name: Retrieve solver binaries
+        uses: actions/download-artifact@v4
+        with:
+          repository: GaloisInc/what4-solvers
+          path: solvers
+      - run: find .
