@@ -17,6 +17,7 @@ env:
   # tool).
   CACHE_VERSION: 1
   RUST_TOOLCHAIN: "nightly-2025-02-16"
+  SOLVER_PKG_VERSION: "snapshot-20250606"
 
 jobs:
   build-haskell:
@@ -56,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: dist/bin
-          name: ${{ matrix.os }}-bins
+          name: ${{ matrix.os }}-${{ runner.arch }}-bins
 
       - uses: actions/cache/save@v3
         name: Save cache store cache
@@ -123,14 +124,31 @@ jobs:
       - name: Download Haskell binaries
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.os }}-bins
+          name: ${{ matrix.os }}-${{ runner.arch }}-bins
       - name: Download mir-json binaries
         uses: actions/download-artifact@v4
         with:
           name: mir-json-${{ matrix.os }}-${{ runner.arch }}
       - name: Download solver binaries
-        uses: actions/download-artifact@v4
+        run: |
+          mkdir -p solver-bin
+          cd solver-bin
+          curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/${{ env.SOLVER_PKG_VERSION }}/${{ matrix.os }}-${{ runner.arch }}-bin.zip"
+          unzip -o bins.zip
+          rm bins.zip
+          cd ..
+      - name: Build archive
+        run: |
+          mkdir -p dist/bin
+          cp -v solver-bin/* dist/bin
+          cd mir-json-${{ matrix.os }}-${{ runner.arch }}
+          tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin ../dist/rust-bin
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs ../dist/rlibs
+          cd ..
+      - name: Upload final artifact
+        uses: actions/upload-artifact@v4
         with:
-          repository: GaloisInc/what4-solvers
-          name: ${{ matrix.os }}-${{ runner.arch }}-bin
-      - run: find .
+          path: dist
+          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+
