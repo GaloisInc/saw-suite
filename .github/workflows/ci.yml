@@ -53,11 +53,10 @@ jobs:
       - shell: bash
         run: .github/workflows/build_haskell.sh
 
-      - if: matrix.ghc-version == '9.4.8'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           path: dist/bin
-          name: ${{ matrix.os }}-${{ runner.arch }}-bins
+          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
 
       - uses: actions/cache/save@v3
         name: Save cache store cache
@@ -124,8 +123,8 @@ jobs:
       - name: Download Haskell binaries
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.os }}-${{ runner.arch }}-bins
-          path: dist/bin
+          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
+          path: dist/saw-suite/bin
       - name: Download mir-json binaries
         uses: actions/download-artifact@v4
         with:
@@ -140,11 +139,11 @@ jobs:
           cd ..
       - name: Build archive
         run: |
-          cp -v solver-bin/* dist/bin
+          cp -v solver-bin/* dist/saw-suite/bin
           tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
-          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin dist/rust-bin
-          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/rlibs
-          chmod a+x dist/bin/*
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin dist/saw-suite/rust-bin
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
+          chmod a+x dist/saw-suite/bin/*
       - name: Upload final artifact
         uses: actions/upload-artifact@v4
         with:
