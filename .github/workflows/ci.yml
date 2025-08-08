@@ -101,6 +101,7 @@ jobs:
         run: |
           NAME="mir-json-${{ matrix.os }}-${{ runner.arch }}"
           echo "NAME=$NAME" >> $GITHUB_ENV
+          mkdir -p dist
           .github/ci.sh zip_dist $NAME
       - name: Upload binary distribution
         uses: actions/upload-artifact@v4
