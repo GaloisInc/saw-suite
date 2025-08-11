@@ -1,0 +1,152 @@
+name: saw-suite
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+(.[0-9]+)?"]
+    branches: [main, "release-**", ci-test]
+  pull_request:
+  schedule:
+    - cron: "0 10 * * *" # 10am UTC -> 2/3am PST
+  workflow_dispatch:
+
+env:
+  # The CACHE_VERSION can be updated to force the use of a new cache if
+  # the current cache contents become corrupted/invalid.  This can
+  # sometimes happen when (for example) the OS version is changed but
+  # older .so files are cached, which can have various effects
+  # (e.g. cabal complains it can't find a valid version of the "happy"
+  # tool).
+  CACHE_VERSION: 1
+  RUST_TOOLCHAIN: "nightly-2025-02-16"
+  SOLVER_PKG_VERSION: "snapshot-20250606"
+
+jobs:
+  build-haskell:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14]
+        ghc-version: ["9.4.8"]
+        cabal: [ '3.10.3.0' ]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc-version }}
+          cabal-version: ${{ matrix.cabal }}
+
+      - uses: actions/cache/restore@v3
+        name: Restore cache store cache
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+
+      - shell: bash
+        run: .github/workflows/build_haskell.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: dist/bin
+          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
+
+      - uses: actions/cache/save@v3
+        name: Save cache store cache
+        if: always()
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+  build-mir-json:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ./deps/mir-json
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Deps
+        run: |
+          rustup default ${{ env.RUST_TOOLCHAIN }}
+          rustup component add rustc-dev rust-src
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+          prefix-key: "${{ env.CACHE_VERSION }}-${{ matrix.os }}"
+      - run: cargo test --locked
+      - name: Install mir-json binaries
+        run: cargo install --locked
+      - name: Translate modified Rust standard libraries
+        run: mir-json-translate-libs
+      # NB: These binary distributions will not work unless you have the
+      # appropriate Rust toolchain installed beforehand.
+      - name: Extract executables to binary distribution
+        shell: bash
+        run: .github/ci.sh setup_dist_bins
+      - name: Compress binary distribution
+        shell: bash
+        run: |
+          NAME="mir-json-${{ matrix.os }}-${{ runner.arch }}"
+          echo "NAME=$NAME" >> $GITHUB_ENV
+          .github/ci.sh zip_dist $NAME
+      - name: Upload binary distribution
+        uses: actions/upload-artifact@v4
+        if: github.event.pull_request.head.repo.fork == false && github.repository_owner == 'GaloisInc'
+        with:
+          name: ${{ env.NAME }}
+          path: "deps/mir-json/${{ env.NAME }}.tar.gz*"
+          if-no-files-found: error
+  package-distribution:
+    runs-on: ${{ matrix.os }}
+    needs: [build-haskell, build-mir-json]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14]
+    steps:
+      - name: Download Haskell binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
+          path: dist/saw-suite/bin
+      - name: Download mir-json binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: mir-json-${{ matrix.os }}-${{ runner.arch }}
+      - name: Download solver binaries
+        run: |
+          mkdir -p solver-bin
+          cd solver-bin
+          curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/${{ env.SOLVER_PKG_VERSION }}/${{ matrix.os }}-${{ runner.arch }}-bin.zip"
+          unzip -o bins.zip
+          rm bins.zip
+          cd ..
+      - name: Build archive
+        run: |
+          cp -v solver-bin/* dist/saw-suite/bin
+          tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin/* dist/saw-suite/bin
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
+          chmod a+x dist/saw-suite/bin/*
+      - name: Upload final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist
+          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+
