@@ -96,12 +96,14 @@ jobs:
         run: mir-json-translate-libs
       # NB: These binary distributions will not work unless you have the
       # appropriate Rust toolchain installed beforehand.
+      - name: Extract executables to binary distribution
+        shell: bash
+        run: .github/ci.sh setup_dist_bins
       - name: Compress binary distribution
         shell: bash
         run: |
           NAME="mir-json-${{ matrix.os }}-${{ runner.arch }}"
           echo "NAME=$NAME" >> $GITHUB_ENV
-          mkdir -p dist
           .github/ci.sh zip_dist $NAME
       - name: Upload binary distribution
         uses: actions/upload-artifact@v4
@@ -139,6 +141,7 @@ jobs:
         run: |
           cp -v solver-bin/* dist/saw-suite/bin
           tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin/* dist/saw-suite/bin
           mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
           chmod a+x dist/saw-suite/bin/*
       - name: Upload final artifact
