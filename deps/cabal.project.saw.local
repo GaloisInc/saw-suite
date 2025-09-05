@@ -1,0 +1,4 @@
+-- At present, this is the only subdirectory containing a tool that we need to
+-- build that is not present in saw-script's cabal.project file.
+packages:
+    deps/crucible/crux-llvm
