@@ -1,3 +1,6 @@
+# Ignore local checkout of saw-script
+deps/saw-script
+
 dist
 dist-*
 cabal-dev
