@@ -12,8 +12,10 @@ install() {
   cp "$PROG" "$TOP_LEVEL_DIR/dist/bin/"
 }
 
+ghc_ver="$(ghc --numeric-version)"
 cd "$DEPS_DIR/saw-script"
 saw-version/src/SAWVersion/savegitinfo.sh
+cp "cabal.GHC-${ghc_ver}.config" cabal.project.freeze
 cabal build all
 
 rm -rf "$TOP_LEVEL_DIR/dist/bin" && mkdir -p "$TOP_LEVEL_DIR/dist/bin"
