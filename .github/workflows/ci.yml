@@ -176,6 +176,8 @@ jobs:
         with:
           path: dist
           name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+      - name: Let's see what artifacts we have
+        run: ls -l dist
       - name: Set up Docker on macOS
         if: matrix.os == 'macos-14'
         run: |
