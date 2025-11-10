@@ -164,3 +164,40 @@ jobs:
           path: dist
           name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
 
+  build-docker-image:
+    runs-on: ${{ matrix.os }}
+    needs: [package-distribution]
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+    steps:
+      - name: Download saw-suite
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+      - name: Set up Docker on macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install colima
+          colima start
+          docker version
+      - name: Build Docker image
+        run: |
+          cat <<'EOF' > Dockerfile
+          FROM ubuntu:22.04
+          RUN apt-get update && \
+              apt-get install -y --no-install-recommends \
+                  curl \
+                  zip \
+                  ca-certificates && \
+              rm -rf /var/lib/apt/lists/*
+          COPY saw-suite-${{ matrix.os }}-${{ runner.arch }} /tmp/saw-suite.zip
+          RUN unzip /tmp/saw-suite.zip && mv /tmp/saw-suite /opt/.
+          EOF
+
+          docker build -t saw-suite:${{ matrix.os }} .
+          docker images
+      - name: Test Docker image
+        run: |
+          docker run --rm saw-suite:${{ matrix.os }} bash -c "saw --version"
