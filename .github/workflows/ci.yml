@@ -201,3 +201,11 @@ jobs:
       - name: Test Docker image
         run: |
           docker run --rm saw-suite:${{ matrix.os }} bash -c "saw --version"
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Push image
+        if: github.event_name == 'push'
+        run: |
+          docker tag saw-suite:${{ matrix.os }} ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
+          docker push ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
