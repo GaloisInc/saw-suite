@@ -192,7 +192,7 @@ jobs:
                   zip \
                   ca-certificates && \
               rm -rf /var/lib/apt/lists/*
-          COPY saw-suite-${{ matrix.os }}-${{ runner.arch }} /tmp/saw-suite.zip
+          COPY dist/saw-suite-${{ matrix.os }}-${{ runner.arch }}.zip /tmp/saw-suite.zip
           RUN unzip /tmp/saw-suite.zip && mv /tmp/saw-suite /opt/.
           EOF
 
