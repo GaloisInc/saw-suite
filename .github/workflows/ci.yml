@@ -177,7 +177,7 @@ jobs:
           path: dist
           name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
       - name: Let's see what artifacts we have
-        run: ls -l dist
+        run: ls -l dist/saw-suite
       - name: Set up Docker on macOS
         if: matrix.os == 'macos-14'
         run: |
@@ -194,7 +194,7 @@ jobs:
                   zip \
                   ca-certificates && \
               rm -rf /var/lib/apt/lists/*
-          COPY dist/saw-suite-${{ matrix.os }}-${{ runner.arch }}.zip /tmp/saw-suite.zip
+          COPY dist/saw-suite/saw-suite-${{ matrix.os }}-${{ runner.arch }}.zip /tmp/saw-suite.zip
           RUN unzip /tmp/saw-suite.zip && mv /tmp/saw-suite /opt/.
           EOF
 
