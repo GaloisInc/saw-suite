@@ -177,7 +177,7 @@ jobs:
           path: dist
           name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
       - name: Let's see what artifacts we have
-        run: ls -l dist/saw-suite
+        run: dist/saw-suite/bin/saw --version
       - name: Set up Docker on macOS
         if: matrix.os == 'macos-14'
         run: |
@@ -194,8 +194,10 @@ jobs:
                   zip \
                   ca-certificates && \
               rm -rf /var/lib/apt/lists/*
-          COPY dist/saw-suite/saw-suite-${{ matrix.os }}-${{ runner.arch }}.zip /tmp/saw-suite.zip
-          RUN unzip /tmp/saw-suite.zip && mv /tmp/saw-suite /opt/.
+          COPY dist/saw-suite/ /opt/saw-suite
+          ENV CRUX_RUST_LIBRARY_PATH=/opt/saw-suite/rlibs
+          ENV SAW_RUST_LIBRARY_PATH=/opt/saw-suite/rlibs
+          ENV PATH=/opt/saw-suite/bin:$PATH
           EOF
 
           docker build -t saw-suite:${{ matrix.os }} .
