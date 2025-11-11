@@ -169,7 +169,7 @@ jobs:
     needs: [package-distribution]
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        os: [ubuntu-22.04, ubuntu-24.04-arm]
     steps:
       - name: Download saw-suite
         uses: actions/download-artifact@v4
@@ -180,12 +180,6 @@ jobs:
         run: |
           chmod +x dist/saw-suite/bin/*
           dist/saw-suite/bin/saw --version
-      - name: Set up Docker on macOS
-        if: matrix.os == 'macos-14'
-        run: |
-          brew install colima
-          brew services start colima
-          docker version
       - name: Build Docker image
         run: |
           cat <<'EOF' > Dockerfile
@@ -210,8 +204,8 @@ jobs:
       - name: Log in to GHCR
         if: github.event_name == 'push'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Push image
-        if: github.event_name == 'push'
-        run: |
-          docker tag saw-suite:${{ matrix.os }} ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
-          docker push ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
+      # - name: Push image
+      #   if: github.event_name == 'push'
+      #   run: |
+      #     docker tag saw-suite:${{ matrix.os }} ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
+      #     docker push ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
