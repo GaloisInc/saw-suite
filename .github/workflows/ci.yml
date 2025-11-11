@@ -184,7 +184,7 @@ jobs:
         if: matrix.os == 'macos-14'
         run: |
           brew install colima
-          colima start
+          brew services start colima
           docker version
       - name: Build Docker image
         run: |
