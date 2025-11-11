@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-22.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
         ghc-version: ["9.4.8"]
         cabal: [ '3.10.3.0' ]
     steps:
@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-22.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,7 +125,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-22.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -142,12 +142,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: mir-json-${{ matrix.os }}-${{ runner.arch }}
+      - name: Set proper path name for what4 solver distribution
+        run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
+      - name: Test set output
+        run: echo ${{ env.RUNNER_OS }}
       - name: Download solver binaries
         run: |
           SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
           mkdir -p solver-bin
           cd solver-bin
-          curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ matrix.os }}-${{ runner.arch }}-bin.zip"
+          curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ env.RUNNER_OS }}-${{ runner.arch }}-bin.zip"
           unzip -o bins.zip
           rm bins.zip
           cd ..
@@ -169,7 +173,7 @@ jobs:
     needs: [package-distribution]
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-22.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
     steps:
       - name: Download saw-suite
         uses: actions/download-artifact@v4
