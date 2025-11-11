@@ -187,8 +187,8 @@ jobs:
           dist/saw-suite/bin/saw --version
       - name: Build Docker image
         run: |
-          cat <<'EOF' > Dockerfile
-          FROM ubuntu:22.04
+          echo FROM ${{ env.RUNNER_OS }} | sed 's/-/:/' > Dockerfile
+          cat <<'EOF' >> Dockerfile
           RUN apt-get update && \
               apt-get install -y --no-install-recommends \
                   curl \
