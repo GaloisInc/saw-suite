@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-22.04-arm, ubuntu-24.04-arm]
         ghc-version: ["9.4.8"]
         cabal: [ '3.10.3.0' ]
     steps:
@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-22.04-arm, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,7 +125,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, ubuntu-24.04-arm] # NOTE: add `ubuntu-22.04-arm, ` to the list
+        # once we have a what4 solvers distribution for Ubuntu 22.04 ARM
     steps:
       - uses: actions/checkout@v5
         with:
@@ -142,10 +143,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: mir-json-${{ matrix.os }}-${{ runner.arch }}
-      - name: Set proper path name for what4 solver distribution
+      - name: Account for a quirk in runner OS naming
         run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
-      - name: Test set output
-        run: echo ${{ env.RUNNER_OS }}
       - name: Download solver binaries
         run: |
           SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
@@ -166,20 +165,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: dist
-          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+          name: saw-suite-${{ env.RUNNER_OS }}-${{ runner.arch }}
 
   build-docker-image:
     runs-on: ${{ matrix.os }}
     needs: [package-distribution]
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm] # TODO: add `ubuntu-22.04-arm` to the list
     steps:
+      - name: Account for a quirk in runner OS naming
+        run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
       - name: Download saw-suite
         uses: actions/download-artifact@v4
         with:
           path: dist
-          name: saw-suite-ubuntu-22.04-${{ runner.arch }}
+          name: saw-suite-${{ env.RUNNER_OS }}-${{ runner.arch }}
       - name: Let's see what artifacts we have
         run: |
           chmod +x dist/saw-suite/bin/*
@@ -200,11 +201,11 @@ jobs:
           ENV PATH=/opt/saw-suite/bin:$PATH
           EOF
 
-          docker build -t saw-suite:${{ matrix.os }} .
+          docker build -t saw-suite:${{ env.RUNNER_OS }} .
           docker images
       - name: Test Docker image
         run: |
-          docker run --rm saw-suite:${{ matrix.os }} bash -c "saw --version"
+          docker run --rm saw-suite:${{ env.RUNNER_OS }} bash -c "saw --version"
       - name: Log in to GHCR
         if: github.event_name == 'push'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
