@@ -169,13 +169,20 @@ jobs:
     needs: [package-distribution]
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
     steps:
-      - name: Download saw-suite
+      - name: Download saw-suite X64
         uses: actions/download-artifact@v4
+        if: runner.arch == 'X64'
         with:
           path: dist
-          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+          name: saw-suite-ubuntu-22.04-${{ runner.arch }}
+      - name: Download saw-suite ARM64
+        uses: actions/download-artifact@v4
+        if: runner.arch == 'ARM64'
+        with:
+          path: dist
+          name: saw-suite-macos-14-ARM64
       - name: Let's see what artifacts we have
         run: |
           chmod +x dist/saw-suite/bin/*
