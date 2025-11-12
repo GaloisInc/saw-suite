@@ -6,6 +6,9 @@ Suite offers a conveniently packaged collection of all the tools in the SAW
 ecosystem, with nightly (i.e., recent) versions of the tools that are known to
 work together.
 
+SAW Suite is also distributed as a minimal multi-platform Docker image
+(currently based on Ubuntu 24.04) containing the binary distribution.
+
 SAW Suite currently contains the following tools:
 
 * [Crux-LLVM](https://tools.galois.com/saw/crux/what-is-crux)
