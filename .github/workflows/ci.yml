@@ -16,6 +16,7 @@ env:
   # (e.g. cabal complains it can't find a valid version of the "happy"
   # tool).
   CACHE_VERSION: 1
+  DOCKER_IMAGE: ghcr.io/galoisinc/saw-suite
 
 jobs:
   build-haskell:
@@ -167,25 +168,31 @@ jobs:
           path: dist
           name: saw-suite-${{ env.RUNNER_OS }}-${{ runner.arch }}
 
-  build-docker-image:
+  build-image:
     runs-on: ${{ matrix.os }}
+    # if: github.ref == 'refs/heads/main' &&
+    #     github.event.pull_request.head.repo.fork == false &&
+    #     github.repository_owner == 'GaloisInc'
     needs: [package-distribution]
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm] # TODO: add `ubuntu-22.04-arm` to the list
+        os: [ubuntu-24.04, ubuntu-24.04-arm] # TODO: add `ubuntu-22.04-arm` to the list
     steps:
       - name: Account for a quirk in runner OS naming
         run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
+
       - name: Download saw-suite
         uses: actions/download-artifact@v4
         with:
           path: dist
           name: saw-suite-${{ env.RUNNER_OS }}-${{ runner.arch }}
+
       - name: Let's see what artifacts we have
         run: |
           chmod +x dist/saw-suite/bin/*
           dist/saw-suite/bin/saw --version
-      - name: Build Docker image
+
+      - name: Build Dockerfile
         run: |
           echo FROM ${{ env.RUNNER_OS }} | sed 's/-/:/' > Dockerfile
           cat <<'EOF' >> Dockerfile
@@ -201,16 +208,101 @@ jobs:
           ENV PATH=/opt/saw-suite/bin:$PATH
           EOF
 
-          docker build -t saw-suite:${{ env.RUNNER_OS }} .
-          docker images
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,manifest-descriptor
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          tags: ${{ env.DOCKER_IMAGE }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ runner.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Test Docker image
         run: |
-          docker run --rm saw-suite:${{ env.RUNNER_OS }} bash -c "saw --version"
-      - name: Log in to GHCR
-        if: github.event_name == 'push'
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      # - name: Push image
-      #   if: github.event_name == 'push'
-      #   run: |
-      #     docker tag saw-suite:${{ matrix.os }} ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
-      #     docker push ghcr.io/${{ github.repository_owner }}/saw-suite:${{ matrix.os }}
+          docker run --rm ${{ env.DOCKER_IMAGE }} bash -c "saw --version"
+
+  push-image:
+    runs-on: ubuntu-22.04
+    needs: [build-image]
+    # if: github.ref == 'refs/heads/main' &&
+    #     github.event.pull_request.head.repo.fork == false &&
+    #     github.repository_owner == 'GaloisInc'
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=raw,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        # Build and run a complex command line with eval to avoid wrong word splitting on spaces in the annotations.
+        run: |
+          eval "docker buildx imagetools create ${ANNOTATIONS} \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(jq -cr '.annotations | map("--annotation \"" + . + "\"") | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)"
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}
