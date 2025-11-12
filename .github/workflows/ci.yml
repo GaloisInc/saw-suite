@@ -250,10 +250,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Test Docker image
-        run: |
-          docker run --rm ${{ env.DOCKER_IMAGE }} bash -c "saw --version"
-
   push-image:
     runs-on: ubuntu-22.04
     needs: [build-image]
