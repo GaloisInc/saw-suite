@@ -17,6 +17,7 @@ env:
   # tool).
   CACHE_VERSION: 1
   DOCKER_IMAGE: ghcr.io/galoisinc/saw-suite
+  DOCKER_IMAGE_TAG: nightly
 
 jobs:
   build-haskell:
@@ -272,20 +273,20 @@ jobs:
         with:
           images: ${{ env.DOCKER_IMAGE }}
           tags: |
-            type=raw,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=${{ env.DOCKER_IMAGE_TAG }},enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         # Build and run a complex command line with eval to avoid wrong word splitting on spaces in the annotations.
-        # Debug: print the command first to understand what exactly we are passing to the builder
+        # Explicitly using `--tag` to set the docker image name/tag
         run: |
-          eval "docker buildx imagetools create --tag ${{ env.DOCKER_IMAGE }}:nightly ${ANNOTATIONS} \
+          eval "docker buildx imagetools create --tag ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_IMAGE_TAG }} ${ANNOTATIONS} \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(jq -cr '.annotations | map("--annotation \"" + . + "\"") | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)"
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:nightly
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_IMAGE_TAG }}
