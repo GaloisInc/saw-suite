@@ -272,19 +272,17 @@ jobs:
         with:
           images: ${{ env.DOCKER_IMAGE }}
           tags: |
-            type=raw,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'fix-ci-docker-build') }}
+            type=raw,value=nightly,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+          DOCKER_METADATA_OUTPUT_VERSION: nightly
+          DOCKER_METADATA_OUTPUT_TAGS: ${{ env.DOCKER_IMAGE }}:nightly
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         # Build and run a complex command line with eval to avoid wrong word splitting on spaces in the annotations.
         # Debug: print the command first to understand what exactly we are passing to the builder
         run: |
-          echo "docker buildx imagetools create ${ANNOTATIONS} \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(jq -cr '.annotations | map("--annotation \"" + . + "\"") | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)"
           eval "docker buildx imagetools create ${ANNOTATIONS} \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(jq -cr '.annotations | map("--annotation \"" + . + "\"") | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
@@ -292,4 +290,4 @@ jobs:
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }}
