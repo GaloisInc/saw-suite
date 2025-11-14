@@ -179,6 +179,10 @@ jobs:
         # this can be extended if the need arises
         os: [ubuntu-24.04, ubuntu-24.04-arm]
     steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Debug step
         run: |
           ls -l
