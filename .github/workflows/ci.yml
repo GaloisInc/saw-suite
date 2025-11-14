@@ -288,4 +288,4 @@ jobs:
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }}
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:nightly
