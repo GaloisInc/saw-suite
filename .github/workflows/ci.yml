@@ -208,11 +208,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug - see where we are
+        run: |
+          ls -l
+          pwd
+
       - name: Build and push by digest
         uses: docker/build-push-action@v6
         id: build
         with:
           context: .
+          file: ./Dockerfile
           tags: ${{ env.DOCKER_IMAGE }}
           annotations: ${{ steps.meta.outputs.annotations }}
           labels: ${{ steps.meta.outputs.labels }}
