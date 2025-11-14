@@ -169,9 +169,9 @@ jobs:
 
   build-image:
     runs-on: ${{ matrix.os }}
-    if: github.ref == 'refs/heads/main' &&
-        github.event.pull_request.head.repo.fork == false &&
-        github.repository_owner == 'GaloisInc'
+    # if: github.ref == 'refs/heads/main' &&
+    #     github.event.pull_request.head.repo.fork == false &&
+    #     github.repository_owner == 'GaloisInc'
     needs: [package-distribution]
     strategy:
       matrix:
@@ -239,9 +239,9 @@ jobs:
   push-image:
     runs-on: ubuntu-22.04
     needs: [build-image]
-    if: github.ref == 'refs/heads/main' &&
-        github.event.pull_request.head.repo.fork == false &&
-        github.repository_owner == 'GaloisInc'
+    # if: github.ref == 'refs/heads/main' &&
+    #     github.event.pull_request.head.repo.fork == false &&
+    #     github.repository_owner == 'GaloisInc'
     strategy:
       fail-fast: false
     steps:
