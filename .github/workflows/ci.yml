@@ -22,7 +22,7 @@ env:
   REDHAT_OS: redhat-ubi9
 
 jobs:
-  build-on-ubi9:
+  build-haskell-ubi9:
     runs-on: ubuntu-latest
     env:
       BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
@@ -280,7 +280,7 @@ jobs:
 
   package-distribution-ubi9:
     runs-on: ubuntu-latest
-    needs: [build-haskell] #, build-mir-json]
+    needs: [build-haskell-ubi9, build-mir-json-ubi9]
     steps:
       - uses: actions/checkout@v5
         with:
