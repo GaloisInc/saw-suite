@@ -34,8 +34,7 @@ jobs:
       options: --user root
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         run: |
@@ -81,9 +80,7 @@ jobs:
         ghc-version: ["9.4.8"]
         cabal: [ '3.10.3.0' ]
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
 
       - name: Clone SAW
         shell: bash
@@ -130,9 +127,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw_and_submods
@@ -186,9 +181,7 @@ jobs:
           dnf update -y
           dnf -y install git gcc gcc-c++ make nodejs perl jq
           dnf clean all
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw_and_submods
@@ -239,19 +232,17 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw
       - name: Download Haskell binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
           path: dist/saw-suite/bin
       - name: Download mir-json binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: mir-json-${{ matrix.os }}-${{ runner.arch }}
       - name: Account for a quirk in runner OS naming
@@ -282,19 +273,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-haskell-ubi9, build-mir-json-ubi9]
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw
       - name: Download Haskell binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: haskell-tools-${{ env.REDHAT_OS }}-${{ runner.arch }}-bins
           path: dist/saw-suite/bin
       - name: Download mir-json binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}
       # NOTE: enable when https://github.com/GaloisInc/what4-solvers/pull/76 lands
@@ -333,12 +322,10 @@ jobs:
         # this can be extended if the need arises
         os: [ubuntu-24.04, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
 
       - name: Download saw-suite
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: dist
           name: saw-suite-ubuntu-24.04-${{ runner.arch }}
@@ -399,12 +386,12 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*
