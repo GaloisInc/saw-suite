@@ -233,7 +233,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
-    steps:
+    steps: &package-distribution-steps
       - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
@@ -278,43 +278,7 @@ jobs:
         fail-fast: false
         matrix:
           os: [ redhat-ubi9]
-    steps:
-      - uses: actions/checkout@v6
-      - name: Clone SAW
-        shell: bash
-        run: .github/ci.sh clone_saw
-      - name: Download Haskell binaries
-        uses: actions/download-artifact@v6
-        with:
-          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
-          path: dist/saw-suite/bin
-      - name: Download mir-json binaries
-        uses: actions/download-artifact@v6
-        with:
-          name: mir-json-${{ matrix.os }}-${{ runner.arch }}
-      # NOTE: enable when https://github.com/GaloisInc/what4-solvers/pull/76 lands
-      # - name: Download solver binaries
-      #   run: |
-      #     SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
-      #     mkdir -p solver-bin
-      #     cd solver-bin
-      #     curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ matrix.os }}-${{ runner.arch }}-bin.zip"
-      #     unzip -o bins.zip
-      #     rm bins.zip
-      #     cd ..
-      - name: Build archive
-        run: |
-          # NOTE: enable copying the solver when https://github.com/GaloisInc/what4-solvers/pull/76 lands
-          # cp -v solver-bin/* dist/saw-suite/bin
-          tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
-          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin/* dist/saw-suite/bin
-          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
-          chmod a+x dist/saw-suite/bin/*
-      - name: Upload final artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: dist
-          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
+    steps: *package-distribution-steps
 
   build-image:
     runs-on: ${{ matrix.os }}
