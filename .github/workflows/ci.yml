@@ -20,18 +20,20 @@ env:
   DOCKER_IMAGE: ghcr.io/galoisinc/saw-suite
   DOCKER_IMAGE_TAG: nightly
   REDHAT_OS: redhat-ubi9
+  GHC_VERSION: 9.4.8
+  CABAL_VERSION: 3.10.3.0
+
 
 jobs:
+  # UBI9 is the only platform that needs to be built in a docker container
+  # all other platforms are built on native gitlab runners.
   build-haskell-ubi9:
     runs-on: ubuntu-latest
     env:
       BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
       BOOTSTRAP_HASKELL_MINIMAL: 1
-      GHC_VERSION: 9.4.8
-      CABAL_VERSION: 3.10.3.0
     container:
       image: redhat/ubi9:latest
-      options: --user root
 
     steps:
       - uses: actions/checkout@v6
@@ -51,10 +53,10 @@ jobs:
 
       - name: Setup haskell environment
         run: |
-          ghcup install ghc $GHC_VERSION
-          ghcup install cabal $CABAL_VERSION
+          ghcup install ghc ${{ env.GHC_VERSION }}
+          ghcup install cabal ${{ env.CABAL_VERSION }}
           cabal update
-          ghcup set ghc $GHC_VERSION
+          ghcup set ghc ${{ env.GHC_VERSION }}
           ghc --version
 
       - name: Clone SAW
@@ -77,8 +79,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
-        ghc-version: ["9.4.8"]
-        cabal: [ '3.10.3.0' ]
     steps:
       - uses: actions/checkout@v6
 
@@ -89,8 +89,8 @@ jobs:
       - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: ${{ matrix.ghc-version }}
-          cabal-version: ${{ matrix.cabal }}
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: ${{ env.CABAL_VERSION }}
 
       - uses: actions/cache/restore@v3
         name: Restore cache store cache
@@ -98,9 +98,9 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             deps/saw-script/dist-newstyle
-          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-${{ github.sha }}
           restore-keys: |
-            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-
 
       - shell: bash
         run: .github/workflows/build_haskell.sh
@@ -117,8 +117,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             deps/saw-script/dist-newstyle
-          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
-            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-${{ github.sha }}
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-
 
   build-mir-json:
     runs-on: ${{ matrix.os }}
@@ -170,6 +170,8 @@ jobs:
           path: "deps/saw-script/deps/mir-json/${{ env.NAME }}.tar.gz*"
           if-no-files-found: error
 
+  # UBI9 is the only platform that needs to be built in a docker container
+  # all other platforms are built on native gitlab runners.
   build-mir-json-ubi9:
     runs-on: ubuntu-latest
     container:
@@ -272,6 +274,10 @@ jobs:
   package-distribution-ubi9:
     runs-on: ubuntu-latest
     needs: [build-haskell-ubi9, build-mir-json-ubi9]
+    strategy:
+        fail-fast: false
+        matrix:
+          os: [ redhat-ubi9]
     steps:
       - uses: actions/checkout@v6
       - name: Clone SAW
@@ -280,19 +286,19 @@ jobs:
       - name: Download Haskell binaries
         uses: actions/download-artifact@v6
         with:
-          name: haskell-tools-${{ env.REDHAT_OS }}-${{ runner.arch }}-bins
+          name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
           path: dist/saw-suite/bin
       - name: Download mir-json binaries
         uses: actions/download-artifact@v6
         with:
-          name: mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}
+          name: mir-json-${{ matrix.os }}-${{ runner.arch }}
       # NOTE: enable when https://github.com/GaloisInc/what4-solvers/pull/76 lands
       # - name: Download solver binaries
       #   run: |
       #     SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
       #     mkdir -p solver-bin
       #     cd solver-bin
-      #     curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ env.REDHAT_OS }}-${{ runner.arch }}-bin.zip"
+      #     curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ matrix.os }}-${{ runner.arch }}-bin.zip"
       #     unzip -o bins.zip
       #     rm bins.zip
       #     cd ..
@@ -300,15 +306,15 @@ jobs:
         run: |
           # NOTE: enable copying the solver when https://github.com/GaloisInc/what4-solvers/pull/76 lands
           # cp -v solver-bin/* dist/saw-suite/bin
-          tar xzvf mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}.tar.gz
-          mv -v mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}/bin/* dist/saw-suite/bin
-          mv -v mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
+          tar xzvf mir-json-${{ matrix.os }}-${{ runner.arch }}.tar.gz
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/bin/* dist/saw-suite/bin
+          mv -v mir-json-${{ matrix.os }}-${{ runner.arch }}/rlibs dist/saw-suite/rlibs
           chmod a+x dist/saw-suite/bin/*
       - name: Upload final artifact
         uses: actions/upload-artifact@v4
         with:
           path: dist
-          name: saw-suite-${{ env.REDHAT_OS }}-${{ runner.arch }}
+          name: saw-suite-${{ matrix.os }}-${{ runner.arch }}
 
   build-image:
     runs-on: ${{ matrix.os }}
