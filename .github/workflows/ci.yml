@@ -1,13 +1,13 @@
 name: saw-suite
+
 on:
-  push
-  # push:
-  #   tags: ["[0-9]+.[0-9]+(.[0-9]+)?"]
-  #   branches: [main, "release-**", ci-test]
-  # pull_request:
-  # schedule:
-  #   - cron: "0 10 * * *" # 10am UTC -> 2/3am PST
-  # workflow_dispatch:
+  push:
+    tags: ["[0-9]+.[0-9]+(.[0-9]+)?"]
+    branches: [main, "release-**", ci-test]
+  pull_request:
+  schedule:
+    - cron: "0 10 * * *" # 10am UTC -> 2/3am PST
+  workflow_dispatch:
 
 env:
   # The CACHE_VERSION can be updated to force the use of a new cache if
