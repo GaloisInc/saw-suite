@@ -1,4 +1,5 @@
 name: saw-suite
+
 on:
   push:
     tags: ["[0-9]+.[0-9]+(.[0-9]+)?"]
@@ -18,20 +19,68 @@ env:
   CACHE_VERSION: 1
   DOCKER_IMAGE: ghcr.io/galoisinc/saw-suite
   DOCKER_IMAGE_TAG: nightly
+  REDHAT_OS: redhat-ubi9
+  GHC_VERSION: 9.4.8
+  CABAL_VERSION: 3.10.3.0
+
 
 jobs:
+  # UBI9 is the only platform that needs to be built in a docker container
+  # all other platforms are built on native gitlab runners.
+  build-haskell-ubi9:
+    runs-on: ubuntu-latest
+    env:
+      BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
+      BOOTSTRAP_HASKELL_MINIMAL: 1
+    container:
+      image: redhat/ubi9:latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+          dnf update -y
+          dnf -y install git zlib-devel ncurses-devel ncurses-compat-libs gcc gcc g++ \
+            gmp gmp-devel make ncurses xz perl pkgconfig
+          dnf clean all
+
+      - name: Install ghcup, GHC, cabal
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh -s -- -y
+          echo "$HOME/.ghcup/bin" >> $GITHUB_PATH
+
+      - name: Setup haskell environment
+        run: |
+          ghcup install ghc ${{ env.GHC_VERSION }}
+          ghcup install cabal ${{ env.CABAL_VERSION }}
+          cabal update
+          ghcup set ghc ${{ env.GHC_VERSION }}
+          ghc --version
+
+      - name: Clone SAW
+        shell: bash
+        run: .github/ci.sh clone_saw_and_submods
+
+      - name: Build
+        shell: bash
+        run: |
+          .github/workflows/build_haskell.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: dist/bin
+          name: haskell-tools-${{ env.REDHAT_OS }}-${{ runner.arch }}-bins
+
   build-haskell:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
-        ghc-version: ["9.4.8"]
-        cabal: [ '3.10.3.0' ]
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
 
       - name: Clone SAW
         shell: bash
@@ -40,8 +89,8 @@ jobs:
       - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: ${{ matrix.ghc-version }}
-          cabal-version: ${{ matrix.cabal }}
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: ${{ env.CABAL_VERSION }}
 
       - uses: actions/cache/restore@v3
         name: Restore cache store cache
@@ -49,9 +98,9 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             deps/saw-script/dist-newstyle
-          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-${{ github.sha }}
           restore-keys: |
-            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-
 
       - shell: bash
         run: .github/workflows/build_haskell.sh
@@ -68,8 +117,9 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             deps/saw-script/dist-newstyle
-          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-${{ github.sha }}
-            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(format('cabal.GHC-{0}.config', matrix.ghc-version)) }}-
+          key: ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-${{ github.sha }}
+            ${{ env.CACHE_VERSION }}-cabal-${{ matrix.os }}-${{ env.GHC_VERSION }}-${{ hashFiles(format('cabal.GHC-{0}.config', env.GHC_VERSION)) }}-
+
   build-mir-json:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -77,9 +127,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw_and_submods
@@ -121,6 +169,63 @@ jobs:
           name: ${{ env.NAME }}
           path: "deps/saw-script/deps/mir-json/${{ env.NAME }}.tar.gz*"
           if-no-files-found: error
+
+  # UBI9 is the only platform that needs to be built in a docker container
+  # all other platforms are built on native gitlab runners.
+  build-mir-json-ubi9:
+    runs-on: ubuntu-latest
+    container:
+      image: redhat/ubi9:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+          dnf update -y
+          dnf -y install git gcc gcc-c++ make nodejs perl jq
+          dnf clean all
+      - uses: actions/checkout@v6
+      - name: Clone SAW
+        shell: bash
+        run: .github/ci.sh clone_saw_and_submods
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Setup Rust environment
+        run: |
+          RUST_TOOLCHAIN="$(.github/ci.sh get_saw_ci_env_var RUST_TOOLCHAIN)"
+          rustup default "$RUST_TOOLCHAIN"
+          rustup component add rustc-dev rust-src
+      - run: cargo test --locked
+        working-directory: deps/saw-script/deps/mir-json
+      - name: Install mir-json binaries
+        run: cargo install --locked
+        working-directory: deps/saw-script/deps/mir-json
+      - name: Translate modified Rust standard libraries
+        run: mir-json-translate-libs
+        working-directory: deps/saw-script/deps/mir-json
+      # NB: These binary distributions will not work unless you have the
+      # appropriate Rust toolchain installed beforehand.
+      - name: Extract executables to binary distribution
+        shell: bash
+        run: .github/ci.sh setup_dist_bins
+        working-directory: deps/saw-script/deps/mir-json
+      - name: Compress binary distribution
+        shell: bash
+        run: |
+          NAME="mir-json-${{ env.REDHAT_OS }}-${{ runner.arch }}"
+          echo "NAME=$NAME" >> $GITHUB_ENV
+          .github/ci.sh zip_dist $NAME
+        working-directory: deps/saw-script/deps/mir-json
+      - name: Upload binary distribution
+        uses: actions/upload-artifact@v4
+        if: github.event.pull_request.head.repo.fork == false && github.repository_owner == 'GaloisInc'
+        with:
+          name: ${{ env.NAME }}
+          path: "deps/saw-script/deps/mir-json/${{ env.NAME }}.tar.gz*"
+          if-no-files-found: error
+
   package-distribution:
     runs-on: ${{ matrix.os }}
     needs: [build-haskell, build-mir-json]
@@ -128,27 +233,26 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04, macos-15, ubuntu-22.04-arm, ubuntu-24.04-arm]
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+    steps: &package-distribution-steps
+      - uses: actions/checkout@v6
       - name: Clone SAW
         shell: bash
         run: .github/ci.sh clone_saw
       - name: Download Haskell binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: haskell-tools-${{ matrix.os }}-${{ runner.arch }}-bins
           path: dist/saw-suite/bin
       - name: Download mir-json binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: mir-json-${{ matrix.os }}-${{ runner.arch }}
       - name: Account for a quirk in runner OS naming
         run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
       - name: Download solver binaries
         run: |
-          SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
+          #SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
+          SOLVER_PKG_VERSION="snapshot-20260119"
           mkdir -p solver-bin
           cd solver-bin
           curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ env.RUNNER_OS }}-${{ runner.arch }}-bin.zip"
@@ -168,6 +272,15 @@ jobs:
           path: dist
           name: saw-suite-${{ env.RUNNER_OS }}-${{ runner.arch }}
 
+  package-distribution-ubi9:
+    runs-on: ubuntu-latest
+    needs: [build-haskell-ubi9, build-mir-json-ubi9]
+    strategy:
+        fail-fast: false
+        matrix:
+          os: [ redhat-ubi9]
+    steps: *package-distribution-steps
+
   build-image:
     runs-on: ${{ matrix.os }}
     if: github.ref == 'refs/heads/main' &&
@@ -180,12 +293,10 @@ jobs:
         # this can be extended if the need arises
         os: [ubuntu-24.04, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v6
 
       - name: Download saw-suite
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: dist
           name: saw-suite-ubuntu-24.04-${{ runner.arch }}
@@ -246,12 +357,12 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*
