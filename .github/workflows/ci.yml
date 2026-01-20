@@ -251,7 +251,8 @@ jobs:
         run: echo RUNNER_OS=$(echo ${{ matrix.os }} | sed 's/-arm//') >> $GITHUB_ENV
       - name: Download solver binaries
         run: |
-          SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
+          #SOLVER_PKG_VERSION="$(.github/ci.sh get_saw_ci_env_var SOLVER_PKG_VERSION)"
+          SOLVER_PKG_VERSION="snapshot-20260119"
           mkdir -p solver-bin
           cd solver-bin
           curl -o bins.zip -sL "https://github.com/GaloisInc/what4-solvers/releases/download/$SOLVER_PKG_VERSION/${{ env.RUNNER_OS }}-${{ runner.arch }}-bin.zip"
