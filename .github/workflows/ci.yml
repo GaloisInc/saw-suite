@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup what4-solvers
-        uses: GaloisInc/what4-solvers@solver-download-action
+        uses: GaloisInc/what4-solvers@v1
 
 
       - name: Verify solvers
