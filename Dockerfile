@@ -11,8 +11,8 @@ RUN apt-get update && \
         git && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable -y
-RUN . "$HOME/.cargo/env"
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN . "$HOME/.cargo/env" && rustup install stable
 
 COPY dist/saw-suite/ /opt/saw-suite
 ENV CRUX_RUST_LIBRARY_PATH=/opt/saw-suite/rlibs
