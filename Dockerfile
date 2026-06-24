@@ -7,7 +7,8 @@ RUN apt-get update && \
         curl \
         zip \
         ca-certificates \
-        make && \
+        make \
+        git && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable -y
