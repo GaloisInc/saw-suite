@@ -1,18 +1,9 @@
 # This Dockerfile is used in the CI,
-# it is a minimal Ubuntu image containing
-# the saw-suite binary package, make and rustc/cargo
-FROM ubuntu:24.04
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        zip \
-        ca-certificates \
-        make \
-        git && \
-    rm -rf /var/lib/apt/lists/*
+# it is a Debian image with pre-installed rust tools, containing
+# the saw-suite binary package, including solvers
+FROM rust:1.96
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-RUN . "$HOME/.cargo/env" && rustup install stable
+RUN rustup default nightly-2025-09-14
 
 COPY dist/saw-suite/ /opt/saw-suite
 ENV CRUX_RUST_LIBRARY_PATH=/opt/saw-suite/rlibs
